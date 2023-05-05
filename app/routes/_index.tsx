@@ -5,6 +5,15 @@ import { useMachine } from '@xstate/react/fsm'
 import { useMemo } from 'react'
 import { typedjson, useTypedLoaderData } from 'remix-typedjson'
 
+const states = [{ id: 'welcome' }, { id: 'onboard' }, { id: 'chat' }, { id: 'test' }]
+const stateTransition = [{ state: 'welcome', event: 'next', target: 'onboard' }]
+const stateAction = [
+  {
+    state: 'welcome',
+    on: 'entry',
+    action: [{ type: 'message', text: 'こんにちは' }],
+  },
+]
 export const loader = (args: LoaderArgs) => {
   const machineDefinition: StateMachine.Config<
     object,
@@ -35,7 +44,9 @@ export const loader = (args: LoaderArgs) => {
   }
 
   const stateMachine = interpret(createMachine(machineDefinition)).start()
-  console.log(stateMachine.send('next'))
+  stateMachine.subscribe((state) => console.log('subscribed:', state.value))
+  console.log('send next')
+  stateMachine.send('next')
 
   return typedjson({ machineDefinition })
 }
