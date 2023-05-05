@@ -1,13 +1,20 @@
 import { Box, Button, Heading } from '@chakra-ui/react'
-import { json } from '@remix-run/node'
-import { useLoaderData } from '@remix-run/react'
-import { createMachine } from '@xstate/fsm'
+import type { LoaderArgs } from '@remix-run/node'
+import { createMachine, interpret, type StateMachine } from '@xstate/fsm'
 import { useMachine } from '@xstate/react/fsm'
 import { useMemo } from 'react'
+import { typedjson, useTypedLoaderData } from 'remix-typedjson'
 
-export const loader = () => {
-  const machineDefinition = {
-    id: 'promise',
+export const loader = (args: LoaderArgs) => {
+  const machineDefinition: StateMachine.Config<
+    object,
+    { type: 'next' } | { type: 'chat' },
+    | { value: 'welcome'; context: object }
+    | { value: 'onboard'; context: object }
+    | { value: 'chat'; context: object }
+    | { value: 'test'; context: object }
+  > = {
+    id: 'chatbot',
     initial: 'welcome',
     states: {
       welcome: {
@@ -15,32 +22,31 @@ export const loader = () => {
           next: { target: 'onboard' },
           chat: { target: 'chat' },
         },
-        entry: () => {
-          console.log('welcome!')
-        },
+        entry: () => console.log('welcome entry'),
+        exit: () => console.log('welcome exit'),
       },
       onboard: {
         on: { next: { target: 'chat' } },
-        entry: () => {
-          console.log('onboard!')
-        },
+        entry: { type: 'next' },
       },
       chat: {},
       test: {},
     },
   }
-  return json({ machineDefinition })
+
+  const stateMachine = interpret(createMachine(machineDefinition)).start()
+  console.log(stateMachine.send('next'))
+
+  return typedjson({ machineDefinition })
 }
 
 export default function Index() {
-  const { machineDefinition } = useLoaderData<typeof loader>()
+  const { machineDefinition } = useTypedLoaderData<typeof loader>()
   const chatbotMachine = useMemo(() => createMachine(machineDefinition), [machineDefinition])
   const [state, send] = useMachine(chatbotMachine)
 
   const handleClick = () => {
-    console.log(state.value, state.changed)
     send('next')
-    console.log(state.value, state.changed)
   }
 
   return (
